@@ -1,0 +1,2 @@
+# xvi
+Extensible Variational Inference

@@ -74,3 +74,48 @@ http_archive(
     strip_prefix = "buildtools-master",
     url = "https://github.com/bazelbuild/buildtools/archive/master.zip",
 )
+
+http_archive_ext(
+    name = "python38_static",
+    build_file_content = """
+exports_files(["python_bin"])
+filegroup(
+    name = "files",
+    srcs = glob(["build/**"], exclude = ["**/* *"]),
+    visibility = ["//visibility:public"],
+)
+""",
+    patch_cmds = [
+        "mkdir $(pwd)/build",
+        "./configure --prefix=$(pwd)/build --enable-optimizations --disable-shared --enable-option-checking=fatal --with-lto --without-ensurepip",
+        "make -j6",
+        "make install",
+        "ln -s build/bin/python3 python_bin",
+    ],
+    sha256 = "7c664249ff77e443d6ea0e4cf0e587eae918ca3c48d081d1915fe2a1f1bcc5cc",
+    strip_prefix = "Python-3.8.8",
+    urls = [
+        "https://www.python.org/ftp/python/3.8.8/Python-3.8.8.tar.xz",
+    ],
+)
+
+load("@rules_python//python:pip.bzl", "pip_install")
+
+pip_install(
+    name = "py_deps",
+    python_interpreter_target = "@python38_static//:python_bin",
+    requirements = "//:requirements.txt",
+)
+
+http_archive(
+    name = "bazel_latex",
+    sha256 = "f81604ec9318364c05a702798c5507c6e5257e851d58237d5f171eeca4d6e2db",
+    strip_prefix = "bazel-latex-1.0",
+    url = "https://github.com/ProdriveTechnologies/bazel-latex/archive/v1.0.tar.gz",
+)
+
+load("@bazel_latex//:repositories.bzl", "latex_repositories")
+
+latex_repositories()
+
+register_toolchains("//:custom_py_toolchain")

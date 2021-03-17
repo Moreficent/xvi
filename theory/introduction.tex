@@ -1,0 +1,207 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage[style=iso]{datetime2}
+\usepackage{amsmath}
+\usepackage{eufrak}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+\newcommand{\defeq}{\vcentcolon=}
+
+\title{Introduction to Automatic Differentiation Variational Inference}
+\author{Harshad Deo \\ 
+  \href{mailto:harshad@moreficent.com}{harshad@moreficent.com} \\ 
+  \href{mailto:harshad@simianquant.com}{harshad@simianquant.com}
+}
+\date{}
+
+\setlength{\parindent}{0cm}
+
+\hypersetup{
+  colorlinks,
+  citecolor=blue,
+  filecolor=blue,
+  linkcolor=blue,
+  urlcolor=blue
+}
+  
+\setlength{\parskip}{\baselineskip}%
+  
+  
+\begin{document}
+  
+\maketitle
+
+Bayesian methods allow us to capture uncertainty while drawing inferences and making predictions from data. Instead of 
+point estimates, they provide the machinery to generate a probability distribution over the inference targets. Aside from 
+guarding against over-zealous interpretations of the analysis, quantifying the uncertainty is useful when the utility of 
+the inference target is a non-linear function of its value. For example, if two assets, say a stock or a house, have the
+same expected return but the second has a much higher variance (i.e.\ is more risky), most people would invest in the 
+first. 
+
+Formally, given observations $x$ and latent variables $\theta$, Bayesian methods attempt to construct the posterior 
+distribution of the latent variables given the data, i.e.\ $p(\theta|x)$. For most practical problems, it is intractable 
+to calculate the true posterior, therefore in practice, Bayesian methods are a suite of algorithms that attempt to 
+approximate the true posterior. There are two families of approaches that are used:
+
+\begin{enumerate}
+  \item Those that construct a stationary stochastic process whose outputs are samples from the joint posterior, like 
+    Markov Chain Monte Carlo and Hamiltonian Monte Carlo. These do not scale to large datasets and are tricky at 
+    best to parallelize.
+  \item Those that choose the best approximation to the true posterior from a known family of distributions. This method 
+    of inferring the true posterior is called variational inference (VI).
+\end{enumerate}
+
+This monograph presents Automatic Differentiation Variational Inference (ADVI), a new VI algorithm
+developed by Kucukelbir at al \footnote{Kucukelbir, Alp, et al. ``Automatic differentiation variational inference." 
+The Journal of Machine Learning Research 18.1 (2017): 430-474.} that overcomes the shortcomings of earlier VI approaches.
+Subsequent monographs will develop simplifying assumptions that allow complex models to be calibrated to large datasets. 
+
+\section*{Applicability}
+
+Variational approaches haven't been frequently used in practice because each problem required the construction of a new
+variational scheme and optimization procecure. ADVI aims to automate this process. 
+
+\begin{enumerate}
+  \item ADVI transforms any applicable probability model into one over unconstrained real latent variables. Since all the 
+  latent variables are defined in the same space, ADVI can use a single variational family for all models. 
+  \item ADVI expresses the gradient of the objective function as an expectation over a standard gaussian. This allows
+  the gradient to be efficiently computed using Monte Carlo sampling. 
+\end{enumerate}
+
+ADVI is applicable to all differentiable probability models. Given a probability parameterized by a $K$ dimensional 
+latent space $\theta$, and its support given by:
+
+\begin{equation}
+  supp(p(\theta)) = \{\theta | \theta \in \mathbb{R}^K \, \text{and} \, p(\theta) > 0 \} \subseteq \mathbb{R} ^ K \notag
+\end{equation}
+
+ADVI is applicable if $\theta$ is continuous and the gradient of the log joint density, $\nabla_{\theta}\log p(x, \theta)$, 
+is defined within the support of the prior.
+
+\section*{Objective Function}
+
+Considering a family of approximating variational densities $q(\theta ; \phi)$, parameterized by $\phi \in \Phi$, 
+variational inference finds the member of the family that minimizes the KL divergence to the posterior:
+
+\begin{equation*}
+  \phi^* = \underset{\phi \in \Phi}{\text{argmin}}\, KL(q(\theta ; \phi) || p(\theta | x)) \quad \text{such that} \quad supp(q(\theta ; \phi)) \subseteq supp(p(\theta | x))
+\end{equation*}
+
+The optimised $q(\theta; \phi^*)$ serves as an approximation to the posterior. 
+
+\begin{align*}
+  KL(q(\theta ; \phi) || p(\theta | x)) \defeq &\mathbb{E}_{q(\theta)}\big[\log q(\theta;\phi) - \log p(\theta|x)  \big] \\
+  =& \mathbb{E}_{q(\theta)}\big[\log q(\theta;\phi) - \log p(\theta, x) + \log p(x)\big] \\
+  =& \mathbb{E}_{q(\theta)}\big[\log q(\theta;\phi) - \log p(\theta, x) \big] + \log p(x)
+\end{align*}
+
+Since the KL divergence is itself dependent on the posterior density, it cannot be directly minimized. Instead, we try 
+to maximise the Evidence Lower Bound (ELBO), given by:
+
+\begin{equation*}
+  \mathcal{L}(\phi) = \mathbb{E}_{q(\theta)}\big[\log p(x, \theta) - \log q(\theta;\phi) \big]
+\end{equation*}
+
+The negative of the ELBO is equal to the KL divergence, upto an additive constant. Therefore maximising the ELBO is 
+equivalent to minimising the KL divergence. Therefore the target objective function is given by:
+
+\begin{equation*}
+  \phi^* = \underset{\phi \in \Phi}{\text{argmax}}\, \mathcal{L}(\phi) \quad \text{such that} \quad supp(q(\theta ; \phi)) \subseteq supp(p(\theta | x))
+\end{equation*}
+
+\section*{Unconstrained Objective Function}
+
+The first step is to remove the domain constraint of the objective function. Define a bijective differentiable function $T$:
+
+\begin{align*}
+  &T : supp(p(\theta)) \to \mathbb{R}^K \\
+  &\zeta = T(\theta)
+\end{align*}
+
+The transformed joint density now has the representation:
+
+\begin{equation*}
+  p(x, \zeta) = p\big(x, T^{-1}(\zeta)\big)|\det J_{T^{-1}}(\zeta)| 
+\end{equation*}
+
+To illustrate, consider the three most common constraint transforms as they are implemented in Stan:\footnote{Stan Development Team. 2020. Stan Modeling Language Users Guide and Reference Manual, 2.25. https://mc-stan.org}
+
+\begin{itemize}
+  \item $\theta > a \implies \zeta(\theta) = \log(\theta - a)$
+  \item $\theta < b \implies \zeta(\theta) = \log(b - \theta)$
+  \item $a < \theta < b \implies \zeta(\theta) = \log\big(\frac{\theta - a}{b - \theta}\big)$
+\end{itemize}
+
+With this transformation, the unconstrained objective function can be expressed as:
+
+\begin{equation*}
+  \phi^* = \underset{\phi \in \Phi}{\text{argmax}} \, \mathbb{E}_{q(\zeta; \phi)}\big[\log p(x, T^{-1}(\zeta)) + \log |\det J_{T^{-1}}(\zeta)| - \log q(\zeta; \phi) \big]
+\end{equation*}
+
+\section*{Variational Approximation}
+
+ADVI uses a multivariate normal distribution to approximate the distribution of the transformed latent variables ($\zeta$). This
+implicitly induces a non-Gaussian distribution in the original latent space ($\theta$). The approximation can be implemented in
+two main ways:
+
+\begin{enumerate}
+  \item \textbf{Mean-field Gaussian}, in which all the transformed latent variables are assumed to be independent
+  \item \textbf{Full-rank Gaussian}, in which all the transformed variables are allowed to be correlated
+\end{enumerate}
+
+The number of parameters of a Full-rank Gaussian approximation ($\phi$) grow quadratically with the dimensionality of the 
+latent space ($K$), making this approach unfeasable for large models. Since the focus of this repository is on techniques
+to fit complex models to large datasets, subsequent monographs will focus on the mean field approximation. For the sake of 
+generality, this monograph presents the full rank approach. Therefore the variational approximation is given by:
+
+\begin{align*}
+  q(\zeta, \phi) \defeq& \mathcal{N}\big(\zeta; \mu, \Sigma ^ 2\big) \\
+  \Phi =& \{\mu_1, \ldots, \mu_K, l_{\{1, 1\}}, \ldots, l_{\{K, K\}} \} = \mathbb{R}^{K ( K + 1) / 2}
+\end{align*}
+
+Where $l_{\{i, j\}}$ is a Cholesky factor of the covariance matrix. With this approximation, the optimization objective 
+can be expressed as:
+
+\begin{equation*}
+  \phi^* = \underset{\phi \in \Phi}{\text{argmax}} \, \mathbb{E}_{q(\zeta; \phi)}\big[\log p(x, T^{-1}(\zeta)) + \log |\det J_{T^{-1}}(\zeta)|\big] - \mathbb{E}_{q(\zeta; \phi)}\big[\log q(\zeta; \phi) \big]
+\end{equation*}
+
+The second term is the entropy of a multivariate Gaussian. This can be simplified to:
+
+\begin{equation*}
+  \mathbb{E}_q[\log q] = \frac{K}{2} + \frac{K}{2}\ln(2\pi) + \frac{1}{2}\ln\det \Sigma^2
+\end{equation*}
+
+Therefore the optimization objective can be simplified to:
+
+\begin{equation*}
+  \phi^* = \underset{\phi \in \Phi}{\text{argmax}} \, \mathbb{E}_{q(\zeta; \phi)}\big[\log p(x, T^{-1}(\zeta)) + \log |\det J_{T^{-1}}(\zeta)|\big] + \frac{1}{2}\ln \det \Sigma ^ 2
+\end{equation*}
+
+
+The final step is to convert the expectation over $q(\zeta; \phi)$ into one over a standard normal variable. To achieve
+this, consider a transformation $S_{\phi}$ that aborbs the variational parameters $\phi$\footnote{This is variously 
+referred to as elliptical standardization, coordinate transformation, invertable transformation and the re-parameterization
+trick}. In general, this is given by:
+
+\begin{align*}
+  \eta &= S_{\phi}(\zeta) = L^{-1} (\zeta - \mu), \quad \text{where $L$ is a cholesky decomposition of $\Sigma$} \\
+  q(\eta) &= \prod_{k=1}^{K}\mathcal{N}(\eta_k; 0, 1)
+\end{align*}
+
+
+With this transformation, the objective function is given by:
+
+\begin{equation*}
+  \phi^* = \underset{\phi}{\text{argmax}} \, \mathbb{E}_{\mathcal{N}(\eta; 0, 1)}\big[\log p(x, T^{-1}(S_\phi^{-1}(\eta))) + \log |\det J_{T^{-1}}(S_\phi^{-1}(\eta))|\big] + \frac{1}{2}\ln \det \Sigma ^ 2
+\end{equation*}
+
+Since the expectation in the objective is no longer dependent on the optimization target ($\phi$), the gradient of the expectation
+equals the expectation of the gradient, and can therefore be efficiently calculated using Monte Carlo integration. In the paper, 
+the authors argue that, in practice, a single sample is sufficient. The objective function can now be solved by standard procedures
+like gradient ascent. 
+
+\end{document}

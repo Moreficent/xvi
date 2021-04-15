@@ -10,7 +10,7 @@
 
 \newcommand{\defeq}{\vcentcolon=}
 
-\title{Automatic Differentiation Variational Inference - Mean Field Simplification}
+\title{Automatic Differentiation Variational Inference \\ Mean Field Simplification and Constraint Scalar}
 \author{Harshad Deo \\ 
   \href{mailto:harshad@moreficent.com}{harshad@moreficent.com} \\ 
   \href{mailto:harshad@simianquant.com}{harshad@simianquant.com}
@@ -34,19 +34,18 @@
 \maketitle
 
 This monograph is a follow up to the article introducing Auto Differentiation Variational Inference and develops simplifying
-assumptions that allow the technique to be used to train large, complex models over large datasets, for example Bayesian 
+assumptions that allow the technique to be used to train large, complex models over large datasets, for example for Bayesian 
 Deep Learning.
 
 \section*{Decoupling The Latent Space}
 
 The full rank approximation, developed in the previous monograph, allows all the latent variables ($\theta$) to be coupled
 with each other through the correlation matrix of the variational approximation. As a result, the number of parameters
-required to model the latent space grows quadratically with the size of the latent space. This makes it intractable for 
-use in all but the simplest problems, with a few thousand latent variables. 
+grows quadratically with the size of the latent space. This makes it intractable for 
+use in all but the simplest problems, say with a few thousand latent variables. 
 
-The mean field approximation assumes that all the latent variables are independent. Therefore, the number of parameters
-required to model the latent space grows linearly with the size of the latent space, making it practical to scale the size
-of the model. Formally,
+The mean field approximation assumes that all the latent variables are independent. This makes it practical to scale the 
+models, as the number of parameters grows linearly with the size of the latent space. Formally,
 
 \begin{align*}
   q(\zeta, \phi) \defeq& \mathcal{N}\big(\zeta; \mu, \text{diag}(\exp(\omega) ^2)\big) \\
@@ -65,9 +64,10 @@ And the elliptical standardization is given by:
   \eta_k = S_{\phi}(\zeta) = \frac{\zeta_k - \mu_k}{\exp \omega_k}
 \end{equation*}
 
-The correlation, if required, now needs to be modelled in explicitly as a function of the latent variables. For example, 
-the Lewandowski-Kurowicka-Joe transform \footnote{Lewandowski, D., Kurowicka, D., \& Joe, H. (2009). Generating random correlation matrices based on vines and extended onion method. Journal of multivariate analysis, 100(9), 1989-2001.} can be used to explicitly model a correlation matrix for a subset of the latent
-variables. 
+Correlation between the latent variables, if required, now needs to be modelled in explicitly as a function of the 
+latent variables. For example, the Lewandowski-Kurowicka-Joe transform \footnote{Lewandowski, D., Kurowicka, D., \& Joe, H. (2009). Generating random correlation matrices based on vines and extended onion method. Journal of multivariate analysis, 100(9), 1989-2001.} 
+can be used to explicitly model a correlation matrix for a subset of the latent variables. This transformation, as well as several 
+other useful ones, ship with the library. 
 
 \section*{Entropy Simplification}
 
@@ -89,7 +89,7 @@ Therefore the optimization objective can be simplified to:
 \section*{Joint Probability Simplification}
 
 The joint probability of the data and the parameters, $p\big(x, T^{-1}(S_\phi^{-1}(\eta))\big)$ can be factorized as the product 
-of the probability of the data, given the parameters and the prior probability of the parameters. The objective can thus be 
+of the probability of the data given the parameters, and the prior probability of the parameters. The objective can thus be 
 reexpressed as:
 
 \begin{equation*}
@@ -97,29 +97,51 @@ reexpressed as:
 \end{equation*}
 
 
-Therefore, it is observed that the prior probability acts as a regularizing term on the distribution of the latent space. This gives 
-a clear and simple interpretation to standard regularization techniques like $L_1$ and $L_2$ regularization as assigning Laplace
-and Gaussian priors respectively. 
+It is observed that the prior probability acts as a regularizing term on the distribution of the latent space. This gives 
+a clear and simple interpretation to standard regularization techniques like $L_1$ and $L_2$ regularization as being equivalent to 
+assigning Laplace and Gaussian priors respectively, with some fixed scale parameters. 
 
 \section*{Graph Simplification}
 
-To simplify the expression further, the family of constraint relaxation functions, $T(\theta)$ has to be restricted to those
-for whom the Jacobian of the inverse transform is a triangular matrix. This is a benign assumption in practice because it is
-true for virtually all of the commonly used transformations. Since the Jacobian of a triangular matrix is the product of 
-its diagonal, this assumption allows the computational graph to be factorized into mutually exclusive subgraphs $U_1 \ldots U_M, M \leq K$
-such that $U_m, 1 \le m \leq M$ is only dependent on $U_1 \ldots U_{m - 1}$. Let
+To simplify the expression further, the computational graph is assumed to be directed and acyclic, and the family of 
+constraint relaxation functions, $T(\theta)$, is restricted to that for which the Jacobian of the inverse transform is 
+a triangular matrix. In practice, this is a benign assumption as it is true for practically all models and all commonly used 
+transformations. Since the Jacobian of a triangular matrix is the product of its diagonal elements, 
+the computational graph can be factorized into mutually exclusive subgraphs $U_1 \ldots U_M, M \leq K$ such that 
+$U_m, 1 < m \leq M$ is only dependent on $U_1 \ldots U_{m - 1}$. Let
 
 \begin{align*}
-  z_m \defeq&\quad \text{The output of the m-th subgraph} \\
-  \rho_m \defeq&\quad \text{The log prior probability of the m-th subgraph} \\
-  \tau_m \defeq&\quad \text{The contribution of the jacobian of the inverse constraint transform} \\
-  K_m \defeq&\quad \text{Indices for the m-th subgraph}
+  K_m \defeq&\quad \text{Indices of the latent space for the m-th subgraph} \\
+  \tau_m \defeq&\quad \text{The contribution of the m-th subgraph to the jacobian of the inverse constraint transform} \\
+  z_m \defeq&\quad \text{The sampled outputs of the m-th subgraph, implicitly being functions of $\phi$} \\
+  \rho_m \defeq&\quad \text{The summed log prior probability of the m-th subgraph} \\
+  \mathcal{P}(\cdot) \defeq&\quad \text{The summed log probability of the arguments}
 \end{align*}
 
-The optimization objective can therefore be reexpressed as:
+$\tau_m$ is equal to the sum of the diagonal elements in rows $K_m$ of the jacobian of the inverse constraint transform matrix. The optimization 
+objective can be reexpressed as:
 
 \begin{equation*}
-  \phi^* = \underset{\phi}{\text{argmax}} \, \mathbb{E}_{\mathcal{N}(\eta; 0, 1)}\big[\log p(x | z_M) \big] + \sum_{m=1}^{M}\Big(\mathbb{E}_{\mathcal{N}(\eta_m; 0, 1)(\rho_m(z_1, \ldots, z_m ))}\Big)
+  \phi^* = \underset{\phi}{\text{argmax}} \, \mathcal{P}(x | z_M) + \sum_{m=1}^{M}\Big(\rho_m(z_1, \ldots, z_m ) + \tau_m + \sum_{j \in K_m}\omega_j \Big)
 \end{equation*}
+
+The first term can be interpreted as the log probability of the output given the input and the model. Each of the summands of the
+second term can be interpreted as a \textit{constraint scalar} that ensures that the latent variables for the subgraph satisfy their 
+domain constraint and are regularized by their priors. Let $\mathcal{C}_m$ denote the constraint scalar for subgraph $m$. The optimization
+objective can be reexpressed as:
+
+\begin{equation*}
+  \phi^* = \underset{\phi}{\text{argmax}} \, \mathcal{P}(x | z_M) + \sum_{m=1}^{M}\mathcal{C}_m(z_1, \ldots, z_m )
+\end{equation*}
+
+This can be interpreted by analogy with the architecture of modern deep learning libraries, like TensorFlow and PyTorch:
+
+\begin{enumerate}
+  \item $P$ is equivalent to the cost function. For example, if the output is normally distributed with a fixed variance, the optimization objective is mathematically identical to a Mean Square Error loss.
+  \item Instead of a single tensor, each subgraph outputs a tuple. The first is a sample tensor of the output and the second is a scalar constraint term. 
+  \item All of the constraint scalars are summed and added to the loss given by the cost function.
+\end{enumerate}
+
+These parallels motivate the abstractions of the library. 
 
 \end{document}

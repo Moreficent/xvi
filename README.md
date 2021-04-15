@@ -15,5 +15,5 @@ It is implemented on top of TensorFlow and can be easily integrated with the res
 
 A gentle introduction to the requisite theory is provided in two monographs:
 
-1. **Introduction to Auto Differentiation Variational Inference**: A summary of the paper, that sacrifices rigor for readability. A pdf is available [here](www.google.com)
-1. **Mean Field Simplification and the Constraint Scalar**: Develops the simplifying assumptions and the key abstractions used by the library. A pdf is available [here](www.google.com).
+1. **Introduction to Auto Differentiation Variational Inference**: A summary of the paper, that sacrifices rigor for readability. A pdf is available [here](https://xvi-docs.s3.us-east-2.amazonaws.com/introduction.pdf)
+1. **Mean Field Simplification and the Constraint Scalar**: Develops the simplifying assumptions and the key abstractions used by the library. A pdf is available [here](https://xvi-docs.s3.us-east-2.amazonaws.com/meanfieldsimpl.pdf).

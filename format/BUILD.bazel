@@ -1,0 +1,10 @@
+load("@py_deps//:requirements.bzl", "requirement")
+
+py_binary(
+    name = "format_py",
+    srcs = ["format_py.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        requirement("yapf"),
+    ],
+)

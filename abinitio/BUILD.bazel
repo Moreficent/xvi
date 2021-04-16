@@ -1,0 +1,6 @@
+load("//format:format.bzl", "format_py")
+
+format_py(
+    name = "fmt",
+    srcs = glob(["*.py"]),
+)

@@ -114,8 +114,8 @@ $U_m, 1 < m \leq M$ is only dependent on $U_1 \ldots U_{m - 1}$. Let
   K_m \defeq&\quad \text{Indices of the latent space for the m-th subgraph} \\
   \tau_m \defeq&\quad \text{The contribution of the m-th subgraph to the jacobian of the inverse constraint transform} \\
   z_m \defeq&\quad \text{The sampled outputs of the m-th subgraph, implicitly being functions of $\phi$} \\
-  \rho_m \defeq&\quad \text{The summed log prior probability of the m-th subgraph} \\
-  \mathcal{P}(\cdot) \defeq&\quad \text{The summed log probability of the arguments}
+  \rho_m \defeq&\quad \text{The averaged log prior probability of the m-th subgraph} \\
+  \mathcal{P}(\cdot) \defeq&\quad \text{The averaged log probability of the arguments}
 \end{align*}
 
 $\tau_m$ is equal to the sum of the diagonal elements in rows $K_m$ of the jacobian of the inverse constraint transform matrix. The optimization 

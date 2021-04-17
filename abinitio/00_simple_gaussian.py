@@ -69,8 +69,8 @@ if __name__ == '__main__':
     prior_dist = tfp.distributions.Normal(loc=PRIOR_LOC, scale=PRIOR_SCALE)
     for idx in range(num_epochs):
         loss = train_step(mu, omega, prior_dist, data, optim)
-        loss = loss.numpy()
         if idx % 100 == 0:
+            loss = loss.numpy()
             print(f'[{idx:04d}]: loss: {loss:4.3f}, mu: {mu.numpy():1.3f}, omega: {omega.numpy():1.3f}')
 
     print(f'[{num_epochs:04d}]: loss: {loss:4.3f}, mu: {mu.numpy():1.3f}, omega: {omega.numpy():1.3f}')

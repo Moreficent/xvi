@@ -43,7 +43,7 @@ def train_step(mu, omega, prior_dist, data, optim):
 
 if __name__ == '__main__':
     # Generating the data
-    data_loc = -3
+    data_loc = 3
     data_samples = 100
     data = tf.random.normal(shape=[data_samples, 1], mean=data_loc, stddev=DATA_SCALE)
 
@@ -62,7 +62,8 @@ if __name__ == '__main__':
     omega = tf.Variable(initial_value=init_omega, trainable=True, name='omega')
     print(f'Initial parameters: mu: {init_mu:1.3f}, omega: {init_omega:1.3f}')
     print(f'Target parameters : mu: {posterior_mean:1.3f}, omega: {0.5 * math.log(posterior_variance):1.3f}')
-    # # training the model
+
+    # training the model
     optim = tf.keras.optimizers.RMSprop(learning_rate=5e-2)
     num_epochs = 2000
     prior_dist = tfp.distributions.Normal(loc=PRIOR_LOC, scale=PRIOR_SCALE)

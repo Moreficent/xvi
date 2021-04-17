@@ -1,0 +1,72 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{setspace}
+\usepackage{amsmath}
+\usepackage{eufrak}
+\usepackage{amssymb}
+\usepackage{mathtools}
+
+\newcommand{\defeq}{\vcentcolon=}
+
+\title{Ab'Initio ADVI \\ Simple Gaussian}
+\author{Harshad Deo \\ 
+  \href{mailto:harshad@moreficent.com}{harshad@moreficent.com} \\ 
+  \href{mailto:harshad@simianquant.com}{harshad@simianquant.com}
+}
+\date{}
+
+\setlength{\parindent}{0cm}
+
+\hypersetup{
+  colorlinks,
+  citecolor=blue,
+  filecolor=blue,
+  linkcolor=blue,
+  urlcolor=blue
+}
+  
+\setlength{\parskip}{\baselineskip}%
+  
+  
+\begin{document}
+  
+\maketitle
+
+Consider a Gaussian random variable with an unknown mean $\theta$ and known variance $\sigma_0$ with a Gaussian
+prior on the mean. Formally:
+
+\begin{align*}
+  X &\sim \mathcal{N}(\theta, \sigma_0^2)\\
+  p(\theta) &\sim \mathcal{N}(\mu_1, \sigma_1)
+\end{align*}
+
+Since the domain of $\theta$ is not constrained, 
+
+\begin{align*}
+  \zeta &= T(\theta) = \theta \\
+  \theta &= T^{-1}(\zeta) = \zeta
+\end{align*}
+
+Therefore the log determinant of the jacobian of the inverse transform evaluates to 0. Approximating $\zeta$ with a 
+Gaussian distribution with mean $\mu$ and scale $\exp(\omega)$, the approximated variational space is given by:
+
+\begin{equation*}
+  \Phi = \{\mu, \omega\} = \mathbb{R}^2
+\end{equation*}
+
+Given the variational approximation, the elliptical standardization is given by:
+
+\begin{align*}
+  \eta &= S_{\phi}(\zeta) = \frac{\zeta - \mu}{\exp(\omega)} \\
+  \zeta &= S_{\phi}^{-1}(\eta) = \mu + \eta \exp(\omega)
+\end{align*}
+
+Therefore the objective function is given by:
+
+\begin{align*}
+  \mu^*, \omega^* &= \underset{\mu, \omega}{\text{argmax}}\,\mathbb{E}_\eta\big[\log p(x, \mu + \eta\exp(\omega)) \big] + \omega \\
+  &= \underset{\mu, \omega}{\text{argmax}}\,\mathbb{E}_\eta\big[\log p(x | \mu + \eta\exp(\omega), \sigma_0) + \log p(\mu + \eta \exp(\omega)|\mu_1, \sigma_1)] + \omega 
+\end{align*}
+
+\end{document}

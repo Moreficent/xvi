@@ -1,4 +1,7 @@
 load("//format:format.bzl", "format_py")
+load("abinitio.bzl", "simple_example")
+
+simple_example("00_simple_gaussian")
 
 format_py(
     name = "fmt",

@@ -12,6 +12,12 @@ def simple_example(file_name):
         name = name,
         srcs = [file_name_py, "utils.py"],
         deps = [
+            requirement("matplotlib"),
+            requirement("pyparsing"),
+            requirement("cycler"),
+            requirement("python-dateutil"),
+            requirement("kiwisolver"),
+            requirement("Pillow"),
             requirement("numpy"),
             requirement("tensorflow"),
             requirement("tensorflow-probability"),

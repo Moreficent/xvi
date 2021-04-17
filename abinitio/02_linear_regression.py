@@ -64,7 +64,6 @@ def train_step(mu0, mu1, mu2, omega0, omega1, omega2, prior_intercept_dist, prio
 if __name__ == '__main__':
     import matplotlib
     import matplotlib.pyplot as plt
-    matplotlib.use('Qt5Agg')
 
     # generating the data
     data_slope = 0.35
